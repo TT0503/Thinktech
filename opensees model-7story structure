@@ -1,0 +1,370 @@
+
+from openseespy.opensees import *
+import matplotlib.pyplot as plt
+import numpy as np
+import opsvis as opsv
+import os
+# Step 1: Initialize the Model and Define Nodes
+wipe()
+model('BasicBuilder', '-ndm', 2, '-ndf', 3)  # Corrected to 2D with 3 DOF per node
+
+# Define nodes (7 stories, 3m each, 6m bays)
+numStories = 7
+storyHeight = 3.0
+bayWidth = 6.0
+nodeTag = 1
+node_coords = []
+duplicateNodeTag = 28
+nodes_to_skip = [1, 2, 3]  # Nodes that should not be duplicated
+nodeTag = 1  # Assuming you start with node 1
+
+for i in range(numStories + 1):
+    z = i * storyHeight
+    for j in range(3):  # Three columns per story (left, middle, right)
+        x = j * bayWidth
+        
+        # Create the main node
+        node(nodeTag, x, z)
+        node_coords.append((nodeTag, x, z))
+        
+        # Check if the node should not be duplicated
+        if nodeTag not in nodes_to_skip:
+            node(duplicateNodeTag, x, z)
+            node_coords.append((duplicateNodeTag, x, z))
+            duplicateNodeTag += 1
+
+        nodeTag += 1  # Increment the main node tag
+
+
+
+# Step 2: Visualize the Model
+# Define gravity
+g = 9.81  # m/s^2
+
+# Define the mass corresponding to 3 kN
+mass_value = 3 / g  # kN-s²/m
+
+# Add mass to node 5 (for example, in the x, y, and z directions)
+mass(5, mass_value,mass_value, mass_value)
+
+# Add mass to node 9 (in the x, y, and z directions)
+mass(9, mass_value, mass_value, mass_value)
+
+opsv.plot_model()
+plt.show()
+
+
+
+# Define the geometric transformation
+transfTag = 1
+transfType = 'Linear'
+geomTransf(transfType, transfTag)
+fix(1, 1, 1, 1)  # Node 1: Fix X, Y, and rotation
+fix(2, 1, 1, 1)  # Node 2: Fix X, Y, and rotation
+fix(3, 1, 1, 1)
+# # Create beam-column elements for each story
+# for i in range(numStories):
+#     for j in range(3):  # 3 vertical columns per story
+#         node1 = i * 3 + j + 1  # Lower node for the column
+#         node2 = (i + 1) * 3 + j + 1  # Upper node for the column
+#         element('elasticBeamColumn', elementTag, node1, node2, A, E, I, transfTag)
+#         elements.append((node1, node2))  # Store element connectivity for tracking
+#         elementTag += 1
+# secTag = 1
+# E_mod = 21000  # Example: Modulus of Elasticity in ksi or MPa
+# A = 0.016516   # Cross-sectional area in square meters or inches
+# Iz = 0.000308  # Moment of inertia in cubic meters or inches
+# Iy = 0.000308  # Moment of inertia in cubic meters or inches
+# G_mod = 79000   # Shear modulus in ksi or MPa
+# J = 2.12278027 * 10-6  # Torsional constant in cubic meters or inches
+# section('Elastic', secTag, E_mod, A, Iz, Iy, G_mod, J)
+
+# #W12*72
+# section('Elastic',2,21000,.0136128,.0002484,8.1165*10-5,G_mod ,1.2195)
+# #W12*58
+# section('Elastic',3,21000,.10967,.000197,4.45*10-5,G_mod ,8.74*10-4)
+# #W12*40
+# section('Elastic',4,21000,.00794,.000127,1.835*10-5,G_mod ,3.387*10-7)
+# #W12*45
+# section('Elastic',5,21000,.0084515,.0001448,2.08,G_mod ,5.244*10-7)
+# #W12*35
+# section('Elastic',6,21000,.006645,.000186,1.0197*10-5,G_mod ,3.08*10-7)
+# #W12*30
+# section('Elastic',7,21000,.00567,9.906*10-5,8.44*10-6,G_mod ,1.914*10-7)
+
+# print("Beam-column elements defined successfully!")
+# numBays = 2
+# for i in range(1, numStories + 1):  # From the first story to the top story
+#     for j in range(numBays):  # Horizontal beams between bays (2 bays = 2 beams per story level)
+#         node1 = i * (numBays + 1) + j + 1  # Left node
+#         node2 = node1 + 1  # Right node
+#         element('elasticBeamColumn', elementTag, node1, node2, A, E, I, transfTag)  # Removed unnecessary parameters
+#         elementTag += 1
+E = 21000000 
+
+
+# element('forceBeamColumn', 32, 20, 21, 1, 1)  # Element tag, nodeI, nodeJ, transfTag, integrationTag
+#forcebeamcolumns
+element('elasticBeamColumn', 1, 1, 4, .0136128, E,.0002484, transfTag)
+element('elasticBeamColumn', 2, 2, 5, .0084515, E,.0001448, transfTag)
+element('elasticBeamColumn', 3, 3, 6, .0084515, E, .0001448, transfTag)
+
+
+element('elasticBeamColumn', 4, 4, 7, 0.006645, E, 0.000186, transfTag)
+element('elasticBeamColumn', 5, 5, 8, 0.006645, E, 0.000186, transfTag)
+
+# W12x30
+element('elasticBeamColumn', 6, 6, 9, 0.00567, E, 0.00009906, transfTag)
+element('elasticBeamColumn', 7, 7, 10, 0.00567, E, 0.00009906, transfTag)
+
+# W12x87
+element('elasticBeamColumn', 8, 8, 11, 0.016516, E, 0.000308, transfTag)
+# W12x58
+element('elasticBeamColumn', 9, 9, 12, .10967, E, .000197, transfTag)
+
+# W12x45
+element('elasticBeamColumn', 10, 10, 13, .0084515, E,.0001448, transfTag)
+#W12x40
+element('elasticBeamColumn', 11, 11, 14, 0.00794, E, 0.000127, transfTag)
+
+# W12x35
+element('elasticBeamColumn', 12, 12, 15, .006645, E,.000186, transfTag)
+# W12x30
+element('elasticBeamColumn', 13, 13, 16, .00567, E, 9.906*10-5, transfTag)
+
+# W12x30
+element('elasticBeamColumn', 14, 14, 17, .00567, E, 9.906*10-5, transfTag)
+element('elasticBeamColumn', 15, 15, 18, 0.0136128, E, 0.0002484, transfTag)
+
+# W12x45
+element('elasticBeamColumn', 16, 16, 19, 0.0084515, E, 0.0001448, transfTag)
+
+element('elasticBeamColumn', 17, 17, 20, 0.0084515, E, 0.0001448, transfTag)
+
+# W12x35
+element('elasticBeamColumn', 18, 18, 21,.006645, E,.000186, transfTag)
+element('elasticBeamColumn', 19, 19, 22,.006645, E,.000186, transfTag)
+
+# W12x30
+element('elasticBeamColumn', 20, 20, 23, .00567, E, 9.906*10-5, transfTag)
+# W12x30
+element('elasticBeamColumn', 21, 21, 24, .00567, E, 9.906*10-5, transfTag)
+
+# # W12x45
+element('elasticBeamColumn', 22, 4, 5, 0.0084515, E, 0.0001448, transfTag)
+element('elasticBeamColumn', 23, 5, 6, 0.0084515, E, 0.0001448, transfTag)
+element('elasticBeamColumn', 35, 7, 8, 0.0084515, E, 0.0001448, transfTag)
+# # W12x40
+element('elasticBeamColumn', 24, 8, 9, 0.00794, E, 0.000127, transfTag)
+element('elasticBeamColumn', 25, 10, 11, 0.00794, E, 0.000127, transfTag)
+
+# # W12x40
+element('elasticBeamColumn', 26, 11, 12, 0.00794, E, 0.000127, transfTag)
+element('elasticBeamColumn', 27, 13, 14, 0.00794, E, 0.000127, transfTag)
+
+# # W12x45
+element('elasticBeamColumn', 28, 14, 15, 0.0084515, E, 0.0001448, transfTag)
+element('elasticBeamColumn', 29, 16, 17, 0.0084515, E, 0.0001448, transfTag)
+
+# # W12x45
+element('elasticBeamColumn', 30, 17, 18,0.0084515, E, 0.0001448, transfTag)
+
+# # W12x40
+element('elasticBeamColumn', 31, 19, 20, 0.00794, E, 0.000127, transfTag)
+element('elasticBeamColumn', 32, 20, 21, 0.00794, E, 0.000127, transfTag)
+element('elasticBeamColumn', 33, 22, 23, 0.00794, E, 0.000127, transfTag)
+element('elasticBeamColumn', 34, 23, 24, 0.00794, E, 0.000127, transfTag)
+
+# # W12x87
+# element('elasticBeamColumn', 35, 35, 38, 0.016516, E, 0.000308, transfTag)
+
+# Step 4: Print Elements Details
+# Get a list of all element tags in the model
+element_tags = getEleTags()
+
+# Loop through the elements and print their details
+for tag in element_tags:
+    node1, node2 = eleNodes(tag)  # Get the nodes connected to the element
+    print(f'Element Tag: {tag}, Start Node: {node1}, End Node: {node2}')
+deadLoadLine = -20 # kN/m
+liveLoadLine = -10   # kN/m
+timeSeries('Constant', 1)
+pattern('Plain', 1, 1, -deadLoadLine)
+pattern('Plain', 2, 1, -liveLoadLine)
+for elementTag in range (22,34):
+        # Apply the distributed dead load
+  eleLoad('-ele','elementtag', '-type', '-beamUniform', -deadLoadLine)
+        # Apply the distributed live load
+  eleLoad('-ele','elementtag', '-type', '-beamUniform', -liveLoadLine)
+#zero length material
+
+
+
+
+from openseespy.opensees import *
+
+# Material properties derived from Lignos & Krawinkler (2011)
+# Effective yield strength (fy), post-yield strength ratio (b), stiffness (E0), and plastic rotations
+K0 = 64033.2  # Initial stiffness (kN/m)
+as_plus = 0.00203545752454409  # Cyclic deterioration parameter for positive plastic rotation
+as_neg = 0.00203545752454409  # Cyclic deterioration parameter for negative plastic rotation
+My_plus = 101.175  # Positive yield moment (kNm)
+My_neg = -101.175  # Negative yield moment (kNm)
+Lambda_S = 1.50476106091578  # Cyclic deterioration parameter for strength (positive)
+Lambda_C = 1.50476106091578  # Cyclic deterioration parameter for strength (negative)
+Res_Pos = 0.4  # Residual strength ratio (positive)
+Res_Neg = 0.4  # Residual strength ratio (negative)
+theta_p_plus = 0.0853883552651735  # Plastic rotation capacity (positive)
+theta_p_neg = 0.0853883552651735  # Plastic rotation capacity (negative)
+theta_pc_plus = 0.234610805942179  # Post-capping rotation capacity (positive)
+theta_pc_neg = 0.234610805942179  # Post-capping rotation capacity (negative)
+theta_u_plus = 0.4  # Ultimate rotation capacity (positive)
+theta_u_neg = 0.4  # Ultimate rotation capacity (negative)
+D_plus = 1  # Rate of deterioration (positive)
+D_neg = 1  # Rate of deterioration (negative)
+
+# Define material tags
+S355_tag = 1
+
+# Define the material with Bilinear properties, useful for plastic hinges
+uniaxialMaterial('Bilin', S355_tag, K0, as_plus, as_neg, My_plus, My_neg, Lambda_S, Lambda_C, Lambda_S, Lambda_C, 1, 1, 1, 1, theta_p_plus, theta_p_neg, theta_pc_plus, theta_pc_neg, Res_Pos, Res_Neg, theta_u_plus, theta_u_neg, D_plus, D_neg)
+elementTag = 36  # Starting tag for zero-length elements
+# Zeo length element
+zeroLengthElements = []
+for tag in range(4, 24):
+    tag2 = tag + 24  # Corresponding duplicated node tag
+    coord_node1 = nodeCoord(tag)  # Assuming nodeCoord() function gives node coordinates
+    coord_node2 = nodeCoord(tag2)
+    # Create the zero-length element between nodes `tag` and `tag2`
+    element('zeroLength', elementTag, tag, tag2, '-mat', S355_tag, '-dir', 3)
+    zeroLengthElements.append((elementTag, tag, tag2, coord_node1, coord_node2))
+    print(f"Zero-length element created with elementTag: {elementTag}, "
+          f"Node1: {tag} (Coord: {coord_node1}), Node2: {tag2} (Coord: {coord_node2})")
+    elementTag += 1  # Increment the element tag for the next element
+ 
+# List of node pairs for zero-length elements (Node1 and Node2)
+node_pairs = [
+    (4, 28), (5, 29),
+    (6, 30), (7, 31), (8, 32), (9, 33), (10, 34),
+    (11, 35), (12, 36), (13, 37), (14, 38), (15, 39),
+    (16, 40), (17, 41), (18, 42), (19, 43), (20, 44),
+    (21, 45), (22, 46), (23, 47)
+]
+
+# Apply equalDOF for each pair (Node1 and Node2) in the x (DOF 1) and z (DOF 2) directions
+for node1, node2 in node_pairs:
+    print ("dof" , node1 , node2)
+    equalDOF(node1, node2,1,2)  # Constrain DOF 1 (x) and DOF 2 (z)
+
+print("EqualDOF applied to all duplicate node pairs.")
+# Print details for the zero-length element, node tags, and their coordinates
+
+print('Zero-length elements successfully created.')
+print('Material definition and zero-length element created successfully.')
+# Printing out all zero-length elements that were created
+print('\nZero-length elements created:')
+
+from math import sqrt, pi
+
+ # Define number of modes to compute
+numEigen = 3
+
+ # Perform modal analysis using the full LAPACK solver (no keyword arguments)
+eigenValues = eigen('-fullGenLapack', numEigen)  # First argument is solver type, second is the number of eigenvalues
+
+ # Convert eigenvalues to natural frequencies in Hz
+naturalFrequencies = [sqrt(eigenValue) / (2 * pi) for eigenValue in eigenValues]
+
+# Print the natural frequencies
+for i, freq in enumerate(naturalFrequencies):
+    print(f"Mode {i+1}: Natural Frequency = {freq:.4f} Hz")
+dt = 0.02  # Time step (make sure this matches the time step in your file)
+filePath = '/Users/ahmedatia/ATIA/HAVER5_2.txt'  # Replace with the actual file path
+
+# # Open the file and read the contents
+# with open(filePath, 'r') as file:
+#     # Read each line (each value in the time series)
+#     for line in file:
+#         # Strip whitespace and print the value
+#         print(line.strip())
+
+# Define the ground motion time series using the Path option
+timeSeries('Path', 50, '-dt', dt, '-filePath', filePath, '-factor',1/9.8)
+
+pattern('UniformExcitation', 3, 1, '-accel', 50)  # 1 for horizontal motion
+
+# Set up the analysis options
+alphaM = 0.02  # Mass proportional damping
+betaK = 0.01   # Stiffness proportional damping
+rayleigh(alphaM, betaK, 0.0, 0.0)  # Apply Rayleigh damping
+constraints('Plain')
+numberer('RCM')
+system('BandGeneral')
+test('RelativeEnergyIncr', 1e-6, 100)
+integrator('Newmark', 0.5, 0.25)
+algorithm('ModifiedNewton')
+analysis('Transient')
+# NewtonLineSearch Algorithm with Bisection
+# Add recorders for displacements and accelerations
+ # Example nodes to record
+
+
+
+# Perform the analysis
+currentTime = 0.0
+totalTime = 10.0
+
+while currentTime < totalTime:
+    if analyze(1, dt) != 0:
+        print("Analysis failed at time:", currentTime)
+        break
+    currentTime += dt
+recorder('Node', '-file', 'Displacement.out', '-time', '-node',5, '-dof', 2, 'disp')
+recorder('Node', '-file', 'Acceleration.out', '-time', '-node',5, '-dof', 2, 'accel')
+print("Analysis completed")
+# Optional: Visualize the model after adding elements
+opsv.plot_model()
+plt.show()
+dt = 0.01 
+print("Displacement at Node 5:", nodeDisp(5))
+print("Displacement at Node 5:", nodeDisp(6))
+# Loop through each node and print the accelerations for a 3D model
+for node in range(1,24) :
+    accelX = nodeAccel(node, 1)  # Acceleration in X-direction (DOF 1)
+    accelY = nodeAccel(node, 2)  # Acceleration in Y-direction (DOF 2)
+    accelZ = nodeAccel(node, 3)  # Acceleration in Z-direction (DOF 3)
+
+    print(f"Node {node}: Acceleration in X = {accelX}, Acceleration in Y = {accelY}, Acceleration in Z = {accelZ}")
+
+ # Example time step (this should match your actual time step)
+ # This will return True if the file exists, False otherwise
+# import os
+
+# # Check if the file exists
+# if os.path.exists(file_path):
+#     print(f"File found at: {file_path}")
+# else:
+#     print(f"File not found at: {file_path}")
+
+# # Try opening the file
+# try:
+#     with open(file_path, 'r') as file:
+#         content = file.readlines()
+#         print(f"First few lines of the file:\n{content[:5]}")
+# except Exception as e:
+#     print(f"Error reading the file: {e}")
+# Load the ground motion data from the text file
+ground_motion = np.loadtxt(filePath,skiprows=7)
+
+# Create a time vector based on the number of data points and the time step
+time = np.arange(0, len(ground_motion) * dt, dt)
+
+# Plot the ground motion time series
+plt.figure(figsize=(10, 6))
+plt.plot(time, ground_motion, label='Ground Motion')
+plt.title('Ground Motion Time Series')
+plt.xlabel('Time [s]')
+plt.ylabel('Acceleration [m/s²]')
+plt.grid(True)
+plt.legend()
+plt.show()
