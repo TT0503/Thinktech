@@ -1,0 +1,855 @@
+import os
+import h5py
+import numpy
+import numpy as np
+from sklearn.model_selection import GroupKFold
+import tensorflow as tf
+from tensorflow import keras
+import matplotlib.pyplot as plt
+from PyEMD import CEEMDAN
+# from pyhht.emd import EMD
+
+import pandas as pd
+from sklearn import model_selection
+from keras.models import Sequential
+from keras.layers import Dense
+from keras.wrappers.scikit_learn import KerasClassifier
+from keras.utils import np_utils
+from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import KFold
+from sklearn.preprocessing import LabelEncoder
+from sklearn.pipeline import Pipeline
+import re
+import os
+import pandas as pd
+import os
+import pandas as pd
+
+# Folder containing Excel files
+excel_folder = "/Users/ahmedatia/ATIA/S_D/SHM/Increamental_Loading_Final"
+
+# Get the list of Excel files and sort them by name
+excel_files = sorted(
+    [os.path.join(excel_folder, file) for file in os.listdir(excel_folder) if file.endswith(".xlsx")]
+)
+
+# Create an empty list to store the merged DataFrames
+dfs = []
+
+# Iterate through each Excel file and merge its first sheet only
+for file in excel_files:
+    # Skip files starting with "~$" (temporary or corrupted files)
+    if os.path.basename(file).startswith("~$"):
+        print(f"Skipping temporary or corrupted file: {file}")
+        continue
+
+    try:
+        # Load the Excel file and parse the first sheet
+        df = pd.read_excel(file, sheet_name=0, engine='openpyxl')
+
+        # Remove the first three rows (assuming they are headers/irrelevant)
+        df = df[1:]  # Skip the units row (optional)
+        df.reset_index(drop=True, inplace=True)
+
+        # Print the first few rows for verification
+        print(f"Preview of {os.path.basename(file)}:")
+        print(df.head())
+
+        # Extract the file name without the extension
+        file_name = os.path.splitext(os.path.basename(file))[0]
+
+        # Add a new column with the Excel file name
+        df['Excel_File_Name'] = file_name
+
+        # Append the DataFrame to the list
+        dfs.append(df)
+
+    except Exception as e:
+        print(f"Error processing file {file}: {e}")
+        continue
+
+# Concatenate all DataFrames into one
+if dfs:  # Check if the list is not empty
+    Acceleration_response_Steel_Structure_alltogther = pd.concat(dfs, ignore_index=True)
+
+    # Write the merged data to a Parquet file
+    output_file = "merged_data.parquet"
+    Acceleration_response_Steel_Structure_alltogther.to_parquet(output_file, engine='pyarrow', index=False)
+    print(f"Merged data saved to '{output_file}'")
+else:
+    print("No valid Excel files to process.")
+
+dfs.columns
+dfs = np.array(dfs)
+print(dfs.shape)
+import pandas as pd
+
+# Combine all DataFrames from the NumPy array
+merged_df = pd.concat(dfs.tolist(), ignore_index=True)
+
+# Display the combined DataFrame
+print(merged_df)
+
+# Optionally save to a file
+merged_df.to_csv("merged_dataframe.csv", index=False)
+merged_df.to_parquet("merged_dataframe.parquet", engine="pyarrow", index=False)
+dfs = merged_df.drop(merged_df.columns[12:35], axis=1)
+result = dfs.head()
+dfs.columns = ['Joint', 'OutputCase', 'CaseType', 'StepType','StepNum','U1','U2','U3','R1','R2','R3','Excel_File_name']
+dfs = dfs.dropna()
+dfs = dfs[2:]
+
+# print (result)
+# Damage_condition = df.loc[:,"Damage_condition"]
+Joint = dfs.loc[:,"Joint"]
+#
+# #print(Damage_condition)
+# Damage_condition= Damage_condition.to_list()
+# #print(Damage_condition)
+Earthquake = dfs.loc[:,"Excel_File_name"]
+Earthquake = Earthquake.to_list()
+# test_Acceleration = test.loc[:,'U1']
+df2= df.loc[:,"U1"]
+earthequake= df.drop(['Damage_condition','Joint','StepNum','U1'], axis=1)
+result = df2.head()
+from numpy import transpose
+df2= np.array(df2, dtype=np.float32)
+print(np.isnan(df2).any())
+df2 =tf.convert_to_tensor(df2)
+# test_Acceleration= tf.convert_to_tensor(test_Acceleration)
+# # print(df.dtype)
+# df = tf.constant(df.values)
+#print
+i = 0
+j = 3500
+A3 = []
+while j <= 294085:
+    indices = range(i, j)
+    df_slice = df2.iloc[indices, :]
+    A = np.transpose(df_slice)
+    A3.append(A)
+    i += 3500
+    j += 3500
+
+#print(len(A3))
+#print(A3[1].shape)
+i=0
+j=3500
+A2=[]
+while i<294085 and j<294085 :
+ A= tf.strided_slice(df2, [i], [j])
+ A = transpose(A)
+ i = i+3500
+ j= j+3500
+ A2.append(A)
+
+x = A2
+Catagory = pd.read_excel ('/Users/ahmedatia/ATIA/S_D/SHM/Increamental_Loading_Final/Catagories.xlsx')
+Catagory_values= Catagory.values
+x= np.array(x)
+# print(list1)
+# adding noise to data se
+Catagory = Catagory.iloc[:, 1]
+snr_dB = 10
+# print (result)
+# print(df2.shape)
+# Convert SNR from dB to linear scale
+
+snr_linear = 10 ** (snr_dB / 10)
+
+# Calculate the signal power
+signal_power = np.mean(x ** 2)
+
+# Calculate the noise power based on the desired SNR
+noise_power = signal_power / snr_linear
+
+# Generate white Gaussian noise with the calculated noise power
+noise = np.sqrt(noise_power) * np.random.randn(*x.shape)
+
+# Add the noise to the signal
+noisy_signal = x + noise
+
+classes = np.unique(np.concatenate((y_train, y_val), axis=0))
+num_classes = len(np.unique(y_train))
+# Count the occurrences of each category
+unique_categories, counts = np.unique(Catagory, return_counts=True)
+
+# Create a dictionary to store the counts for each category
+category_counts = dict(zip(unique_categories, counts))
+
+# Print the counts for each category
+for category, count in category_counts.items():
+    print(f'{category}: {count}')
+# print(num_classes)
+# idx = np.random.permutation(len(X_train))
+# X_train = X_train[idx]
+# y_train = y_train[idx]
+
+#print (X_train)
+# encode class values as integers
+# encoder = LabelEncoder()
+# encoder.fit(y_train)
+# encoded_Y = encoder.transform(y_train)
+# # convert integers to dummy variables (i.e. one hot encoded)
+# dummy_y = np_utils.to_categorical(encoded_Y)
+label_map = {'IO': 0, 'LS': 1, 'S': 2, 'CP': 3, 'IO\ufeff': 0}
+
+y_train = [label_map.get(label, -1) for label in y_train]
+y_val = [label_map.get(label, -1) for label in y_val]
+y_train= tf.convert_to_tensor(y_train)
+y_val= tf.convert_to_tensor(y_val)
+X = x.reshape(x.shape[0], -1)
+df = pd.DataFrame(X)
+# set the directory path
+directory = '/Users/ahmedatia/ATIA/S D/SHM/PhD-Thesis-work/All_numerical&code/PycharmProjects_2/Result_concretesteel_CNNs'
+
+# set the file name
+filename = 'my_excel_file.xlsx'
+
+# export the dataframe to an Excel file in the specified directory
+df.to_excel(directory + filename, index=False)
+
+X = x.reshape(x.shape[0], -1)
+Catagory = pd.read_excel ('/Users/ahmedatia/ATIA/CNNs folder shaker /CNNs Folder catagories .xlsx')
+Catagory_values= Catagory.values
+# groupFold
+# num_groups = 20
+# group_size = 7
+# groups = np.repeat(np.arange(num_groups), group_size)
+# n_splits = 4
+# gkf = GroupKFold(n_splits=n_splits)
+# Catagory = Catagory.values
+# for train_index, test_index in gkf.split(combined_array,Catagory , groups):
+#     print("TRAIN:", train_index, "TEST:", test_index)
+#     X_train, X_test = combined_array[train_index], combined_array[test_index]
+#     y_train, y_test = Catagory[train_index], Catagory[test_index]
+# Count the occurrences of each category
+
+# unique_categories, counts = np.unique(y_test, return_counts=True)
+from sklearn.model_selection import train_test_split
+# Create a dictionary to store the counts for each category
+ # Convert TensorFlow tensor to NumPy array
+X_train, X_test, y_train, y_test = train_test_split(x, Catagory, test_size=0.35, random_state=42)
+
+
+import numpy as np
+
+# Example label_map
+label_map = {'Intakt': 0, 'P_damaged': 1, 'Damaged': 2}
+
+
+from sklearn.preprocessing import OneHotEncoder
+
+# Example labels
+
+# Assuming y_train and y_test are provided
+# Example: y_train = ['Intakt', 'P_damaged', 'Damaged', 'Intakt']
+# Example: y_test = ['Damaged', 'Intakt', 'P_damaged']
+
+# Convert labels to a numpy array (if they are not already)
+y_train=y_train.values
+y_test=y_test.values
+
+# Flatten the list of lists
+y_train = [item[0] for item in y_train]
+
+# Clean the data: remove leading/trailing spaces and convert to lower case
+y_train = [label.strip().lower() for label in y_train]
+label_map = {'intakt': 0, 'p_damaged': 1, 'damaged': 2}
+y_train = np.array([label_map[label] for label in y_train])
+
+# Clean the data: remove leading/trailing spaces and convert to lower case
+y_test = [item[0] for item in y_test]
+y_test = [label.strip().lower() for label in y_test]
+y_test = np.array([label_map[label] for label in y_test])
+# Initialize and fit the OneHotEncoder
+
+# y_train = np.clip(y_train, 0, 2)
+# y_test = np.clip(y_test, 0, 2)
+# Print the results to verify
+print("Original y_train:", y_train[:78])  # Print first 10 elements for inspection
+print("One-hot encoded y_train:\n", y_train[:10])  # Print first 10 encoded elements for inspection
+
+print("Original y_test:", y_test[:10])  # Print first 10 elements for inspection
+print("One-hot encoded y_test:\n", y_test[:10])  # Print first 10 encoded elements for inspection
+
+# y_train= tf.convert_to_tensor(y_train)
+# y_val= tf.convert_to_tensor(y_test)
+
+df = pd.DataFrame(all_data_2)
+# set the directory path
+directory = '/Users/ahmedatia/ATIA/S_D/SHM/CNNs Folder shaker'
+
+# set the file name
+filename = 'my_excel_file.xlsx'
+
+# export the dataframe to an Excel file in the specified directory
+df.to_excel(directory + filename, index=False)
+# print("y_train shape:", y_train.shape)  # Should match model output
+# print("Model output shape:", model.output_shape)
+# import numpy as np
+# import matplotlib.pyplot as plt
+# import pywt
+
+##############reinforcements learning with adaptive labeling and majority voting
+from tensorflow.keras.layers import Input, Dense, LSTM
+from tensorflow.keras.models import Model
+import numpy as np
+import tensorflow as tf
+from tensorflow.keras.optimizers import Adam
+
+
+# Actor Network (Policy Network)
+def create_actor(state_shape, action_space):
+    state_input = Input(shape=state_shape)
+    x = LSTM(128, activation='relu')(state_input)
+    x = Dense(64, activation='relu')(x)
+    action_output = Dense(action_space, activation='softmax')(x)
+    return Model(state_input, action_output)
+
+
+# Critic Network (Value Network)
+def create_critic(state_shape):
+    state_input = Input(shape=state_shape)
+    x = LSTM(128, activation='relu')(state_input)
+    x = Dense(64, activation='relu')(x)
+    value_output = Dense(1)(x)  # State value prediction
+    return Model(state_input, value_output)
+
+
+# Example of adaptive labeling based on critic evaluation
+def adapt_label(critic_value, reward, threshold=0.5):
+    """
+    Adjust the label based on critic's value and the reward. If the critic is uncertain,
+    adapt the reward (label) more strongly to improve learning stability.
+    """
+    if abs(critic_value - reward) > threshold:
+        # Example correction: If large discrepancy, adjust reward closer to critic's value
+        return critic_value
+    return reward
+
+
+# Training loop
+state = np.random.random((1, 10))  # Random state
+reward = 1  # Example reward
+action_taken = np.array([1])  # Example action taken
+
+actor = create_actor(state_shape=(10,), action_space=4)
+critic = create_critic(state_shape=(10,))
+
+actor_optimizer = Adam(learning_rate=0.001)
+critic_optimizer = Adam(learning_rate=0.001)
+
+with tf.GradientTape() as tape:
+    # Forward pass through actor and critic
+    action_probabilities = actor(state)
+    critic_value = critic(state)
+
+    # Apply adaptive label correction (adjusting reward dynamically)
+    corrected_reward = adapt_label(critic_value, reward)
+
+    # Calculate actor loss (policy gradient)
+    log_prob = tf.math.log(action_probabilities[0, action_taken])
+    actor_loss = -log_prob * corrected_reward
+
+    # Calculate critic loss (mean squared error of value prediction)
+    critic_loss = (corrected_reward - critic_value) ** 2
+
+    total_loss = actor_loss + critic_loss
+
+# Apply gradients for optimization
+gradients = tape.gradient(total_loss, actor.trainable_variables + critic.trainable_variables)
+actor_optimizer.apply_gradients(zip(gradients[:len(actor.trainable_variables)], actor.trainable_variables))
+critic_optimizer.apply_gradients(zip(gradients[len(actor.trainable_variables):], critic.trainable_variables))
+#Model start here
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras import backend as K
+
+# Clear the session to reset all models and global state
+K.clear_session()
+
+import tensorflow as tf
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Input, Conv1D, Dense, Flatten, LSTM, Concatenate, Lambda, Dropout, Reshape
+from tensorflow.keras.layers import Conv1D, Flatten, Dense, BatchNormalization, Dropout
+from tensorflow.keras.layers import LSTM, Dense, Dropout, BatchNormalization
+import numpy as np
+
+# Input Layer: Two channels (signal and time steps)
+input_signal = Input(shape=(2, 12850), name="Input_Signal")  # Shape: (2, 12850)
+
+# Branch 1: Time-Series (Signal Channel) -> LSTM
+# Extract signal channel (channel index 0)
+time_series = Lambda(lambda x: x[:, 0, :], name="Extract_Signal")(input_signal)
+time_series = tf.expand_dims(time_series, axis=-1)  # Add time-series dimension
+
+
+lstm_branch = LSTM(128, return_sequences=True, name="LSTM1")(time_series)
+lstm_branch = BatchNormalization(name="BN_LSTM1")(lstm_branch)
+lstm_branch = Dropout(0.3, name="Dropout_LSTM1")(lstm_branch)  # Dropout after the first LSTM layer
+
+lstm_branch = LSTM(64, return_sequences=True, name="LSTM2")(lstm_branch)
+lstm_branch = BatchNormalization(name="BN_LSTM2")(lstm_branch)
+lstm_branch = Dropout(0.3, name="Dropout_LSTM2")(lstm_branch)  # Dropout after the second LSTM layer
+
+lstm_branch = LSTM(32, return_sequences=True, name="LSTM3")(lstm_branch)
+lstm_branch = BatchNormalization(name="BN_LSTM3")(lstm_branch)
+lstm_branch = Dropout(0.3, name="Dropout_LSTM3")(lstm_branch)  # Dropout after the third LSTM layer
+
+lstm_branch = LSTM(16, name="LSTM4")(lstm_branch)  # Added one more LSTM layer
+lstm_branch = BatchNormalization(name="BN_LSTM4")(lstm_branch)
+lstm_branch = Dropout(0.4, name="Dropout_LSTM4")(lstm_branch)  # Higher dropout rate for the final LSTM layer
+
+lstm_branch = Dense(256, activation='relu', name="Dense1_LSTM")(lstm_branch)  # Increased dense units for richer features
+lstm_branch = BatchNormalization(name="BN_Dense1-lstm")(lstm_branch)
+lstm_branch = Dropout(0.4, name="Dropout_Dense1-LSTM")(lstm_branch)
+
+lstm_branch = Dense(128, activation='relu', name="LSTM_Features")(lstm_branch)  # Original final dense layer
+lstm_branch = BatchNormalization(name="BN_Dense2-lstm")(lstm_branch)
+lstm_branch = Dropout(0.4, name="Dropout_Dense2-LSTM")(lstm_branch)
+
+# Branch 2: Frequency-Domain Features -> CNN
+# Extract signal channel (channel index 0) for frequency domain processing
+frequency_input = Lambda(lambda x: x[:, 0, :], name="Extract_Frequency_Signal")(input_signal)
+
+# Transform to Frequency Domain (FFT)
+def fft_transform(x):
+    freq_data = tf.signal.fft(tf.cast(x, tf.complex64))  # Compute FFT
+    return tf.math.abs(freq_data)  # Return magnitude
+
+frequency_features = Lambda(fft_transform, name="FFT_Transform")(frequency_input)
+frequency_features = tf.expand_dims(frequency_features, axis=-1)  # Add channel dimension for CNN
+
+
+cnn_branch = Conv1D(128, kernel_size=5, activation='relu', padding='same', name="CNN_Conv1")(frequency_features)
+cnn_branch = BatchNormalization(name="BN_Conv1")(cnn_branch)
+cnn_branch = Dropout(0.3, name="Dropout_Conv1")(cnn_branch)  # Dropout after the first convolution
+
+cnn_branch = Conv1D(64, kernel_size=5, activation='relu', padding='same', name="CNN_Conv2")(cnn_branch)
+cnn_branch = BatchNormalization(name="BN_Conv2")(cnn_branch)
+cnn_branch = Dropout(0.3, name="Dropout_Conv2")(cnn_branch)  # Dropout after the second convolution
+
+cnn_branch = Conv1D(64, kernel_size=3, activation='relu', padding='same', name="CNN_Conv3")(cnn_branch)
+cnn_branch = BatchNormalization(name="BN_Conv3")(cnn_branch)
+
+cnn_branch = Conv1D(32, kernel_size=3, activation='relu', padding='same', name="CNN_Conv4")(cnn_branch)
+cnn_branch = BatchNormalization(name="BN_Conv4")(cnn_branch)
+cnn_branch = Dropout(0.3, name="Dropout_Conv4")(cnn_branch)  # Dropout after the fourth convolution
+
+cnn_branch = Flatten(name="Flatten_CNN")(cnn_branch)
+cnn_branch = Dense(256, activation='relu', name="Dense1_CNN")(cnn_branch)
+cnn_branch = BatchNormalization(name="BN_Dense1")(cnn_branch)
+cnn_branch = Dropout(0.4, name="Dropout_Dense1")(cnn_branch)  # Dropout after the dense layer
+
+cnn_branch = Dense(128, activation='relu', name="CNN_Features")(cnn_branch)
+cnn_branch = BatchNormalization(name="BN_Dense2")(cnn_branch)
+cnn_branch = Dropout(0.4, name="Dropout_Dense2")(cnn_branch)  # Dropout after the final dense layer
+
+# Merge Branches
+merged = Concatenate(name="Merged_Features")([lstm_branch, cnn_branch])
+merged = Dense(128, activation='relu')(merged)
+merged = Dropout(0.5)(merged)
+
+# Output Layer
+output = Dense(3, activation='softmax', name="Output")(merged)  # Assuming 5 classes for classification
+
+# Define the Model
+model = Model(inputs=input_signal, outputs=output)
+model.summary()
+Adam = Adam(learning_rate=0.01)
+# Compile the Model
+model.compile(optimizer=Adam , loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+
+
+
+# Define epochs and batch_size
+epochs = 200  # Adjust based on your dataset
+batch_size = 128  # Adjust based on available memory and dataset size
+
+# Train the model
+history = model.fit(
+    X_train,
+    y_train,
+    validation_data=(X_test, y_test),  # Validation set
+    batch_size=batch_size,
+    epochs=epochs,
+    callbacks=[
+        tf.keras.callbacks.ModelCheckpoint("best_model.h5", save_best_only=True, monitor="val_loss"),
+        tf.keras.callbacks.ReduceLROnPlateau(monitor="val_loss", factor=0.5, patience=20, min_lr=0.01),
+        tf.keras.callbacks.EarlyStopping(monitor="val_accuracy", patience=10, verbose=1)
+    ]
+)
+
+#LSTM
+def make_model(input_shape):
+    model = keras.models.Sequential()
+
+    # Assuming input_shape is (sequence_length, input_dim)
+    model.add(keras.layers.LSTM(64, input_shape=input_shape, return_sequences=True))
+    model.add(keras.layers.BatchNormalization())
+
+    model.add(keras.layers.LSTM(128, return_sequences=True))
+    model.add(keras.layers.BatchNormalization())
+
+    model.add(keras.layers.LSTM(256, return_sequences=True))
+    model.add(keras.layers.BatchNormalization())
+
+    model.add(keras.layers.LSTM(512))
+    model.add(keras.layers.BatchNormalization())
+
+    model.add(keras.layers.Dense(256, activation="relu"))
+    model.add(keras.layers.BatchNormalization())
+
+    model.add(keras.layers.Dense(128, activation="relu"))
+    model.add(keras.layers.BatchNormalization())
+
+    model.add(keras.layers.Dense(units=3, activation="softmax"))
+
+    return model
+
+
+#
+# def make_model(input_shape):
+#     input_layer = keras.layers.Input(input_shape)
+#
+#     conv1 = keras.layers.Conv1D(filters=64, kernel_size=5, padding="same")(input_layer)
+#     conv1 = keras.layers.BatchNormalization()(conv1)
+#     conv1 = keras.layers.LeakyReLU()(conv1)
+#     conv1 = keras.layers.Dropout(0.2)(conv1)
+#
+#     conv2 = keras.layers.Conv1D(filters=128, kernel_size=5, padding="same")(conv1)
+#     conv2 = keras.layers.BatchNormalization()(conv2)
+#     conv2 = keras.layers.LeakyReLU()(conv2)
+#     conv2 = keras.layers.Dropout(0.2)(conv2)
+#
+#     conv3 = keras.layers.Conv1D(filters=256, kernel_size=5, padding="same")(conv2)
+#     conv3 = keras.layers.BatchNormalization()(conv3)
+#     conv3 = keras.layers.LeakyReLU()(conv3)
+#     conv3 = keras.layers.Dropout(0.2)(conv3)
+#
+#     conv4 = keras.layers.Conv1D(filters=512, kernel_size=5, padding="same")(conv3)
+#     conv4 = keras.layers.BatchNormalization()(conv4)
+#     conv4 = keras.layers.LeakyReLU()(conv4)
+#     conv4 = keras.layers.Dropout(0.2)(conv4)
+#
+#     gap = keras.layers.GlobalAveragePooling1D()(conv4)
+#
+#     output_layer = keras.layers.Dense(units=3, activation="softmax")(gap)
+#
+#     return keras.models.Model(inputs=input_layer, outputs=output_layer)
+
+
+
+from sklearn.metrics import confusion_matrix
+from tabulate import tabulate
+import seaborn as sns
+import matplotlib.pyplot as plt
+from keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, EarlyStopping
+# Define the Model
+# model = make_model(input_shape= X_train.shape[1:])
+print(X_train.shape)
+epochs = 1000
+batch_size = 32
+
+callbacks = [
+    keras.callbacks.ModelCheckpoint(
+        "best_model.h5", save_best_only=True, monitor="val_loss"
+    ),
+    keras.callbacks.ReduceLROnPlateau(
+        monitor="val_loss", factor=0.5, patience=200, min_lr=0.001
+    ),
+    keras.callbacks.EarlyStopping(monitor="val_loss", patience=100, verbose=1)
+]
+
+import time
+model.compile(
+    optimizer="SGD",
+    loss="sparse_categorical_crossentropy",
+    metrics=["sparse_categorical_accuracy"],
+)
+start_time = time.time()
+history = model.fit(
+    X_train,
+    y_train,
+    batch_size=batch_size,
+    epochs=epochs,
+    callbacks=callbacks,
+    validation_data=(X_test, y_test),
+    verbose=1
+)
+print(history.history.keys())
+end_time = time.time()
+test_loss, test_acc = model.evaluate(X_test, y_test)
+
+table = [
+    ["Training Accuracy", history.history['accuracy'][-1]],
+    ["Training Loss", history.history['loss'][-1]],
+    ["Validation Accuracy", history.history['val_accuracy'][-1]],
+    ["Validation Loss", history.history['val_loss'][-1]]
+]
+
+
+print(tabulate(table, headers=["Metric", "Value"], tablefmt="grid"))
+model.save('Classificationof signals.h5')
+import tensorflow as tf
+tf.keras.utils.plot_model(model, to_file='model.png')
+# print("Test accuracy", test_acc)
+# print("Test loss", test_loss)
+# #y_prediction= model.predict(X_val)
+# metric = "sparse_categorical_accuracy"
+# plt.figure()
+# plt.plot(history.history[metric])
+# plt.plot(history.history["val_" + metric])
+# plt.title("model " + metric)
+# plt.ylabel(metric, fontsize="large")
+# plt.xlabel("epoch", fontsize="large")
+# plt.legend(["train", "val"], loc="best")
+# plt.show()
+# plt.close()
+#y_pred_val = model.predict(X_val)
+from sklearn.metrics import confusion_matrix
+#results = model.evaluate(X_val, y_pred_val, batch_size=32)
+# create confusion matrix
+# cm = confusion_matrix(y_pred_val, y_val)
+# Train your model and record training and validation accuracy and time
+
+# Make predictions on the validation data
+y_pred_prob = model.predict(X_test)
+
+y_pred = y_pred_prob.argmax(axis=-1)
+# X_predicted = X_predicted.reshape(8, 1, 901)
+# X_predicted = X_predicted.astype(np.float32)
+#
+# X_predicted = tf.convert_to_tensor(X_predicted)
+# y_pred_prob_2 = model.predict(X_predicted)
+#
+# y_pred_2 = y_pred_prob_2.argmax(axis=-1)
+
+#labek classification
+
+# Compute mean squared error
+#print (y_pred)
+# mse = mean_squared_error(y_pred_prob, X_val)
+# print(mse)
+
+# # Plotting the predicted vs actual values
+# fig, ax = plt.subplots()
+# ax.scatter(y_pred, y_val, color='blue', label='Predicted')
+# ax.plot([0, max(y_val)], [0, max(y_val)], color='black', linestyle='--')
+# ax.set_xlabel('Predicted')
+# ax.set_ylabel('Actual')
+# ax.set_title('Predicted vs Actual')
+# ax.legend()
+# ax.text(0.1, 0.9, 'MSE = {:.2f}'.format(mse), ha='center', va='center', transform=ax.transAxes)
+#
+# plt.show()
+# import matplotlib.pyplot as plt
+
+from sklearn.metrics import confusion_matrix
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# assume y_true and y_pred are your true and predicted labels
+cm = confusion_matrix( y_test, y_pred )
+
+# create heatmap#
+sns.heatmap(cm, annot=True, cmap="Blues")
+plt.title("Confusion Matrix")
+plt.xlabel("Predicted Labels")
+plt.ylabel("True Labels")
+plt.show()
+fig, ax = plt.subplots()
+# for i in range(len(y_val)):
+#     ax.scatter(y_pred[i], y_val[i], color='blue', label='Predicted')
+# ax.plot([0, max(y_val)], [0, max(y_val)], color='black', linestyle='--')
+# ax.set_xlabel('Predicted')
+# ax.set_ylabel('Actual')
+# ax.set_title('Predicted vs Actual')
+# ax.legend()
+# ax.text(0.1, 0.9, 'MSE = {:.2f}'.format(mse), ha='center', va='center', transform=ax.transAxes)
+
+# plt.show()
+import numpy as np
+from sklearn.model_selection import train_test_split
+from tensorflow import keras
+
+
+print(len(y_pred))
+# Extract the misclassified signals
+misclassified_sequences = []
+for i in range(len(y_val)):
+        if not np.array_equal(y_pred[i], y_val[i]):
+
+            misclassified_sequences.append(i)
+# for j in range(len(y_pred)):
+#     for i in range(len(y_val)):
+#         if not np.array_equal(y_pred[j], y_val[i]):
+#             misclassified_sequences.append(i)
+# Convert the misclassified signals to a numpy array
+
+misclassified_signals = np.array( misclassified_sequences)
+misclassified_signals_itself = []
+
+for i in range(len(y_val)):
+        if (y_pred[i] != y_val[i]):
+            misclassified_signals_itself.append(X_val[i])
+
+# Check if the two arrays are equal element-wise
+misclassified_sequences_joint = []
+misclassified_sequences_earthquake = []
+for i in range(len(misclassified_signals_itself)):
+    for j in range(len(A2)):
+        if np.array_equal(misclassified_signals_itself[i], A2[j]):
+            misclassified_sequences_joint.append(Joints[j])
+            misclassified_sequences_earthquake.append(Earthquake[j])
+
+print(misclassified_signals_itself)
+
+print(misclassified_sequences_joint)
+print(misclassified_sequences_earthquake)
+print(len(misclassified_sequences_earthquake))
+print(len(misclassified_sequences_joint))
+
+
+from sklearn.manifold import TSNE
+import matplotlib.pyplot as plt
+tsne = TSNE(n_components=2, perplexity=30, random_state=42)
+features = model.predict(X_val)
+X_tsne = tsne.fit_transform(features)
+# Plot the t-SNE embeddings, colored by the predicted class labels
+plt.scatter(X_tsne[:,0], X_tsne[:,1], c=y_pred)
+plt.colorbar()
+plt.title('t-SNE Visualization of CNN Classification Results')
+
+# Add feature names to x and y axes
+plt.xlabel("TSNE-1")
+plt.ylabel(features[1])
+
+plt.show()
+# print(result)reate heatmap#
+sns.heatmap(cm, annot=True, cmap="Blues")
+plt.title("Confusion Matrix")
+plt.xlabel("Predicted Labels")
+plt.ylabel("True Labels")
+plt.show()
+fig, ax = plt.subplots()
+# for i in range(len(y_val)):
+#     ax.scatter(y_pred[i], y_val[i], color='blue', label='Predicted')
+# ax.plot([0, max(y_val)], [0, max(y_val)], color='black', linestyle='--')
+# ax.set_xlabel('Predicted')
+# ax.set_ylabel('Actual')
+# ax.set_title('Predicted vs Actual')
+# ax.legend()
+# ax.text(0.1, 0.9, 'MSE = {:.2f}'.format(mse), ha='center', va='center', transform=ax.transAxes)
+from sklearn.metrics import precision_score, recall_score, f1_score
+
+# Assuming you have two arrays: y_true and y_pred
+# y_true contains the true labels of the samples
+# y_pred contains the predicted labels of the samples
+
+precision = precision_score(y_val, y_pred, average='weighted')
+recall = recall_score(y_val, y_pred, average='weighted')
+f1 = f1_score(y_val, y_pred, average='weighted')
+
+print("Precision: {:.2f}".format(precision))
+print("Recall: {:.2f}".format(recall))
+print("F1-score: {:.2f}".format(f1))
+
+# plt.show()
+import numpy as np
+from sklearn.model_selection import train_test_split
+from tensorflow import keras
+
+
+misclassified_sequences_joint = np.array(misclassified_sequences_joint)
+print(misclassified_sequences_joint.shape)
+floor_number = []
+for i in range(len(misclassified_sequences_joint)):
+    if misclassified_sequences_joint[i] == 9:
+        floor_number.append('Level_base')
+    elif misclassified_sequences_joint[i] == 10:
+        floor_number.append('Level_1')
+    elif misclassified_sequences_joint[i] == 11:
+        floor_number.append('Level_2')
+    elif misclassified_sequences_joint[i] == 12:
+        floor_number.append('Level_3')
+    elif misclassified_sequences_joint[i] == 13:
+        floor_number.append('Level_4')
+    elif misclassified_sequences_joint[i] == 14:
+        floor_number.append('Level_5')
+    elif misclassified_sequences_joint[i] == 15:
+        floor_number.append('Level_6')
+    elif misclassified_sequences_joint[i] == 16:
+        floor_number.append('Level_7')
+print(floor_number)
+# # Find the indices where the first column of arr is equal to 4
+# indices = np.where(arr[:, 0] == 4)
+# count the frequency of each element
+import numpy as np
+# unique, counts = np.unique(misclassified_sequences_joint, return_counts=True)
+#
+# # plot the bar chart
+# plt.bar(unique, counts)
+#
+# # set the title and labels
+# plt.title("Frequency of elements in array")
+# plt.xlabel("Element")
+# plt.ylabel("Frequency")
+# plt.show()
+# #plot the bar chart of misclassified signals
+
+# unique, counts = np.unique(floor_number, return_counts=True)
+
+
+# # Use the indices to get the corresponding values from the second and third columns to end
+
+unique, counts = np.unique(floor_number, return_counts=True)
+
+# plot the bar chart
+plt.bar(unique, counts)
+
+# set the title and labels
+plt.title("Number of misclassified signals In each floor")
+plt.xlabel("Floor Number")
+plt.ylabel("Number mispredicted signals")
+
+# show the plot
+plt.show()
+import tensorflow as tf
+import pandas as pd
+
+
+
+# Create a list of layers and their parameters
+# Create a list of layers and their parameters
+layers = []
+for layer in model.layers:
+    layer_name = layer.name
+    layer_type = type(layer).__name__
+    if hasattr(layer, 'kernel_size'):
+        kernel_size = layer.kernel_size
+        stride = layer.strides
+        out_channels = layer.filters
+        activation = layer.activation.__name__
+    else:
+        kernel_size = None
+        stride = None
+        out_channels = None
+        activation = None
+    layers.append([layer_name, layer_type, kernel_size, stride, out_channels, activation])
+
+# Create a pandas dataframe from the list of layers
+Internal_Arch_CNN = pd.DataFrame(layers, columns=['Layer Name', 'Layer Type', 'Kernel Size', 'Stride', 'Out Channels', 'Activation'])
+
+# Print the dataframe
+print(Internal_Arch_CNN)
+# # Use the indices to get the corresponding values from the second and third columns
+Internal_Arch_CNN.to_excel('vInternal_Arch_CNN.xlsx', index=False)
+
+from keras.models import Model
+import keras.backend as K
+from keras.preprocessing import image
+from keras.applications.inception_v3 import preprocess_input, decode_predictions
+
+
+layer_name = "conv1"
