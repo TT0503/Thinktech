@@ -1,0 +1,352 @@
+import numpy as np
+import h5py
+import matplotlib.pyplot as plt
+import pandas as pd
+from scipy.signal import csd
+
+# =====================================================
+# 1. FILE PATH
+# =====================================================
+
+folder = r"G:\My Drive\SD_Driver_16_9_25\Thesis_Updated10th25\Chapter_5_10th04\Results\Impact_hammer_results\drive-download-20260424T044921Z-3-001\ImpactHammerImpactHammer086D20-Without any bracing removal-similar first-second mode shape"
+
+samplingTag = "512Hz"
+fs =512
+
+acc_files = [
+    folder + r"\Acc 1.mat",
+    folder + r"\Acc 2.mat",
+    folder + r"\Acc 3.mat",
+    folder + r"\Acc 4.mat",
+    folder + r"\Acc 5.mat",
+    folder + r"\Acc 6.mat",
+    folder + r"\Acc 7.mat"
+]
+
+target_freqs = [3.2, 4.5, 9]
+
+# =====================================================
+# 2. LOAD EXPERIMENTAL ACCELERATION DATA
+# =====================================================
+
+acc_data = []
+
+for i, file in enumerate(acc_files, start=1):
+
+    data_key = f"Data1_Acc_{i}__1__minus__AI_{i}__{samplingTag}"
+
+    with h5py.File(file, "r") as S:
+
+        print(f"\nLoading: {file}")
+        print(f"Using key: {data_key}")
+
+        if data_key not in S:
+            print("Available keys:")
+            print(list(S.keys()))
+            raise KeyError(f"Key not found: {data_key}")
+
+        x = np.array(S[data_key]).squeeze()
+
+    acc_data.append(x)
+
+# =====================================================
+# 3. PREPROCESS
+# =====================================================
+
+min_len = min(len(x) for x in acc_data)
+acc_data = [x[:min_len] for x in acc_data]
+
+X = np.array(acc_data)
+
+# Remove mean
+X = X - np.mean(X, axis=1, keepdims=True)
+
+# =====================================================
+# 4. OUTPUT-ONLY FDD USING CSD MATRIX
+# =====================================================
+
+signal_len = X.shape[1]
+
+nperseg = min(1024, signal_len)
+noverlap = nperseg // 2
+
+print("\n====================================")
+print(f"Signal length = {signal_len}")
+print(f"Using nperseg = {nperseg}")
+print(f"Using noverlap = {noverlap}")
+print("====================================")
+
+freqs, _ = csd(
+    X[0, :],
+    X[0, :],
+    fs=fs,
+    nperseg=nperseg,
+    noverlap=noverlap,
+    window="hann"
+)
+
+n_freq = len(freqs)
+
+singular_values = np.zeros(n_freq)
+mode_shapes_fdd = np.zeros((7, n_freq), dtype=complex)
+
+for k in range(n_freq):
+
+    Sxx = np.zeros((7, 7), dtype=complex)
+
+    for i in range(7):
+        for j in range(7):
+
+            _, Pij = csd(
+                X[i, :],
+                X[j, :],
+                fs=fs,
+                nperseg=nperseg,
+                noverlap=noverlap,
+                window="hann"
+            )
+
+            Sxx[i, j] = Pij[k]
+
+    U, S, VH = np.linalg.svd(Sxx)
+
+    singular_values[k] = S[0]
+    mode_shapes_fdd[:, k] = U[:, 0]
+
+# =====================================================
+# 5. EXTRACT EXPERIMENTAL MODE SHAPES
+# =====================================================
+
+phi_exp_modes = []
+
+print("\n====================================")
+print("EXPERIMENTAL FDD MODE SHAPES")
+print("====================================")
+
+for f_target in target_freqs:
+
+    idx = np.argmin(np.abs(freqs - f_target))
+
+    mode_complex = mode_shapes_fdd[:, idx]
+    mode_real = np.real(mode_complex)
+
+    # Normalize
+    mode_real = mode_real / np.max(np.abs(mode_real))
+
+    # Make top floor positive
+    if mode_real[-1] < 0:
+        mode_real = -mode_real
+
+    phi_exp_modes.append(mode_real)
+
+    print(f"\nExperimental Mode near {freqs[idx]:.4f} Hz:")
+    print(mode_real)
+
+phi_exp = np.column_stack(phi_exp_modes)
+
+# =====================================================
+# 6. NUMERICAL SAP2000 MODE SHAPES - U3
+# Rows = Floor 1 to Floor 7
+# Columns = SAP Mode 1 to SAP Mode 3
+# =====================================================
+phi_num_U3 = np.array([
+
+    # Floor 1 (Joint 34)
+    [ 1.257116,  -5.754785,  -4.011585],
+
+    # Floor 2 (Joint 35)
+    [ 2.558044, -11.524756,  -8.027444],
+
+    # Floor 3 (Joint 36)
+    [ 3.129173, -14.819070, -10.435625],
+
+    # Floor 4 (Joint 37)
+    [ 3.787333, -18.154085, -12.854320],
+
+    # Floor 5 (Joint 38)
+    [ 3.862411, -19.389341, -13.886505],
+
+    # Floor 6 (Joint 39)
+    [ 4.058460, -20.679203, -14.900304],
+
+    # Floor 7 (Joint 40)
+    [ 3.943355, -20.646030, -14.963576]
+
+])
+
+# 7. NORMALIZATION FUNCTION
+# =====================================================
+
+def normalize_modes(phi):
+    phi = np.array(phi, dtype=float).copy()
+
+    for i in range(phi.shape[1]):
+        max_val = np.max(np.abs(phi[:, i]))
+
+        if max_val != 0:
+            phi[:, i] = phi[:, i] / max_val
+
+    return phi
+
+# =====================================================
+# 8. MAC FUNCTION
+# =====================================================
+
+def MAC(a, b):
+    a = np.array(a, dtype=float).reshape(-1)
+    b = np.array(b, dtype=float).reshape(-1)
+
+    numerator = np.abs(np.dot(a, b)) ** 2
+    denominator = np.dot(a, a) * np.dot(b, b)
+
+    return numerator / denominator
+
+# =====================================================
+# 9. CALCULATE MAC MATRIX
+# =====================================================
+
+phi_exp_norm = normalize_modes(phi_exp)
+phi_num_norm = normalize_modes(phi_num_U3)
+
+MAC_matrix = np.zeros((3, 3))
+
+for i in range(3):
+    for j in range(3):
+        MAC_matrix[i, j] = MAC(
+            phi_exp_norm[:, i],
+            phi_num_norm[:, j]
+        )
+
+# =====================================================
+# 10. PRINT RESULTS
+# =====================================================
+
+print("\n====================================")
+print("NORMALIZED EXPERIMENTAL MODES")
+print("====================================\n")
+print(phi_exp_norm)
+
+print("\n====================================")
+print("NORMALIZED NUMERICAL SAP2000 MODES - U3")
+print("====================================\n")
+print(phi_num_norm)
+
+mac_df = pd.DataFrame(
+    MAC_matrix,
+    index=["Exp Mode 1", "Exp Mode 2", "Exp Mode 3"],
+    columns=["SAP Mode 1", "SAP Mode 2", "SAP Mode 3"]
+)
+
+print("\n====================================")
+print("MAC MATRIX - U3")
+print("====================================\n")
+print(mac_df.round(4))
+
+max_idx = np.unravel_index(np.argmax(MAC_matrix), MAC_matrix.shape)
+
+print("\n====================================")
+print("BEST MATCH")
+print("====================================\n")
+
+print(
+    f"Experimental Mode {max_idx[0] + 1} "
+    f"best matches SAP Mode {max_idx[1] + 1}"
+)
+
+print(f"Maximum MAC = {MAC_matrix[max_idx]:.4f}")
+
+# =====================================================
+# 11. PLOT FDD SINGULAR VALUE SPECTRUM
+# =====================================================
+
+plt.figure(figsize=(9, 5))
+plt.plot(freqs, singular_values)
+
+plt.xlabel("Frequency (Hz)")
+plt.ylabel("First Singular Value")
+plt.title("Output-Only FDD Singular Value Spectrum")
+plt.grid(True)
+plt.xlim(0, 60)
+
+for f_target in target_freqs:
+    plt.axvline(f_target, linestyle="--")
+
+plt.show()
+
+# =====================================================
+# 12. PLOT EXPERIMENTAL MODE SHAPES
+# =====================================================
+
+# =====================================================
+# PLOT EXPERIMENTAL MODE SHAPES ONLY
+# =====================================================
+
+# =====================================================
+# PLOT EXPERIMENTAL MODE SHAPES ONLY
+# =====================================================
+
+floors = np.arange(1, 8)
+
+plt.figure(figsize=(6, 8))
+
+markers = ['o-', 's-', '^-']
+
+for i in range(phi_exp.shape[1]):
+
+    plt.plot(
+        phi_exp[:, i],
+        floors,
+        markers[i],
+        linewidth=2,
+        markersize=7,
+        label=f"Mode shape {i + 1}"
+    )
+
+plt.gca().invert_yaxis()
+
+plt.xlabel("Normalized Modal Amplitude", fontsize=12)
+plt.ylabel("Floor", fontsize=12)
+
+plt.title(
+    "Experimental FDD Mode Shapes",
+    fontsize=13,
+    fontweight='bold'
+)
+
+plt.grid(True)
+
+plt.legend(fontsize=10)
+
+plt.tight_layout()
+
+# =====================================================
+# SAVE EDITABLE SVG
+# =====================================================
+import os
+import matplotlib.pyplot as plt
+
+plt.rcParams['svg.fonttype'] = 'none'
+
+# Save in the current Python working directory
+svg_path = os.path.abspath("Experimental_FDD_Mode_Shapes.svg")
+
+plt.savefig(
+    svg_path,
+    format="svg",
+    bbox_inches="tight",
+    facecolor="white"
+)
+
+print("SVG saved to:")
+print(svg_path)
+import os
+print(os.getcwd())
+
+
+
+
+
+
+
+
+
