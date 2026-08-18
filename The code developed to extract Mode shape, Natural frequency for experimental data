@@ -1,0 +1,262 @@
+The code developed to extract Mode shape, Natural frequency for experimental data set and FFT and FRF.  
+import numpy as np
+from scipy.signal import find_peaks
+import tensorflow as tf
+from tensorflow import keras
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+import sklearn
+from sklearn import model_selection
+from keras.models import Sequential
+from keras.layers import Dense
+from keras.wrappers.scikit_learn import KerasClassifier
+from keras.utils import np_utils
+from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import KFold
+from sklearn.preprocessing import LabelEncoder
+from sklearn.pipeline import Pipeline
+import os
+import h5py
+import scipy.io
+import h5py
+import sys
+from functions.Max_frequency import calculate_max_frequency_from_raw
+from functions.frequency_analysis import calculate_FRF
+import numpy as np
+import numpy as np
+import h5py
+from scipy.signal import find_peaks
+import tensorflow as tf
+from tensorflow import keras
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+import sklearn
+from sklearn import model_selection
+from keras.models import Sequential
+from keras.layers import Dense
+from keras.wrappers.scikit_learn import KerasClassifier
+from keras.utils import np_utils
+from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import KFold
+from sklearn.preprocessing import LabelEncoder
+from sklearn.pipeline import Pipeline
+import scipy.io
+from numpy import transpose
+# List of file paths
+file_paths = [
+    '/Users/ahmedatia/ATIA/S D/SHM/Data_Experimental/CNNs Folder /17 ImpactHammerImpactHammer086D20-7rth-floor-bracing-Removal-Bandwidth200HZ',
+    # Add more file paths as needed
+]
+
+# Initialize an empty list to store data from each file
+all_data = []
+Hammer_data = []
+
+# Loop over each file path
+for file_path in file_paths:
+    for i in range(1, 7):
+        data_i = []
+        # Construct the file path for the current file
+        current_file_path = f"{file_path}/AI {i}.mat"
+        with h5py.File(current_file_path, 'r') as f:
+            # Access a specific variable
+            variable_name = f"Data1_AI_{i}__1__minus__AI_{i}__256Hz"
+            acceleration_data = f[variable_name][:]
+            all_data.append(acceleration_data)
+
+
+
+for file_path in file_paths:
+        current_file_path = f"{file_path}/AI 8.mat"
+        with h5py.File(current_file_path, 'r') as f:
+            # Access a specific variable
+            variable_name = f"Data1_AI_8__1__minus__AI_8__256Hz"
+            Hammer_data_V = f[variable_name][:]
+            Hammer_data.append(Hammer_data_V)
+
+Hammer_data = transpose(np.concatenate(Hammer_data))
+data_1 = transpose(np.concatenate(data_1))
+data_2 = transpose(np.concatenate(data_2))
+data_3 = transpose(np.concatenate(data_3))
+data_4 = transpose(np.concatenate(data_4))
+data_5 = transpose(np.concatenate(data_5))
+data_6 = transpose(np.concatenate(data_6))
+data_7 = transpose(np.concatenate(data_7))
+
+mat_data01= np.squeeze(data_1, axis=1)
+mat_data02= np.squeeze(data_2, axis=1)
+mat_data03= np.squeeze(data_3, axis=1)
+mat_data04= np.squeeze(data_4, axis=1)
+mat_data05= np.squeeze(data_5, axis=1)
+mat_data06= np.squeeze(data_6, axis=1)
+mat_data07= np.squeeze(data_7, axis=1)
+mat_Hammer= np.squeeze(Hammer_data, axis=1)
+
+# Concatenate data from all files along the appropriate axis
+combined_data = transpose (np.concatenate(all_data, axis=0))
+
+print("Combined data shape:", combined_data.shape)
+import numpy as np
+import numpy as np
+import numpy as np
+
+measurement_locations = ["Location A", "Location B", "Location C", "Location D", "Location E",
+                         "Location F", "Location G", "Location H", "Location I", "Location J"]
+tol = 1e-10
+
+import scipy.linalg as la
+# Perform SVD with additional parameters 
+scaled_data = (combined_data - np.min(combined_data, axis=0)) / (np.max(combined_data, axis=0) - np.min(combined_data, axis=0))
+
+# Center the data around zero
+centered_data = scaled_data - np.mean(scaled_data, axis=0)
+
+# Normalize the data to have unit variance
+combined_data = centered_data / np.std(centered_data, axis=0)
+U, s, Vt = la.svd(combined_data, full_matrices=True, overwrite_a=False, check_finite=True, lapack_driver='gesvd')
+lambda_value = 1e-3  # You may need to adjust this parameter based on your data and the computed condition number
+condition_number = np.linalg.cond(combined_data)
+
+print("Condition number of the matrix:", condition_number)
+
+mode_shapes = U
+singular_values = s
+
+num_modes_to_extract = min(mode_shapes.shape[1], 7)  # Number of dominant modes to extract
+dominant_modes = mode_shapes[:, :num_modes_to_extract]
+natural_frequencies = singular_values[:num_modes_to_extract]
+
+# Sort mode shapes and natural frequencies by ascending natural frequencies
+sorted_indices = np.argsort(natural_frequencies)
+dominant_modes_sorted = dominant_modes[:, sorted_indices]
+natural_frequencies_sorted = natural_frequencies[sorted_indices]
+
+# Display mode shapes, natural frequencies, and measurement locations
+for i in range(num_modes_to_extract):
+    print(f"Mode {i+1}:")
+    print("Mode Shape:")
+    print(dominant_modes_sorted[:, i])
+    print("Natural Frequency:", natural_frequencies_sorted[i])
+    print("Measurement Location:", measurement_locations)
+    print()
+
+
+
+from numpy import transpose
+mat_data01 = transpose(data_1)
+Hammer_data_V= transpose(Hammer_data_V)
+mat_data02 = transpose(mat_data02)
+mat_data03 = transpose(mat_data03)
+mat_data04 = transpose(mat_data04)
+mat_data05 = transpose(mat_data05)
+mat_data06 = transpose(mat_data06)
+mat_data07 = transpose(mat_data07)
+# Case2 data
+Acceleration1_data=transpose(Acceleration1_data)
+Hammer=transpose(Hammer)
+mat_data01 = mat_data01.reshape(8661)
+hammer=Hammer_data_V.reshape(8661)
+mat_data01= mat_data01[-1]
+mat_data02= mat_data02[-1]
+mat_data03= mat_data03[-1]
+mat_data04= mat_data04[-1]
+mat_data05= mat_data05[-1]
+mat_data06= mat_data06[-1]
+mat_data07= mat_data07[-1]
+mat__C1_ACC1 = np.squeeze(Acceleration1_data, axis=1)
+mat__C1_ACC1= Acceleration1_data[-1]
+hammer = np.squeeze(Hammer, axis=1)
+
+
+
+def calculate_max_frequency_from_raw(signal, fs):
+    # Calculate the FFT of the signal
+    fft_signal = np.fft.fft(signal)
+
+    # Calculate the frequencies corresponding to the FFT
+    freqs = np.fft.fftfreq(len(signal), 1/fs)
+
+    # Find peaks in the FFT (excluding DC component)
+    peaks, _ = find_peaks(np.abs(fft_signal), height=0)
+
+    # Find the frequency corresponding to the highest peak
+    max_frequency_index = peaks[np.argmax(np.abs(fft_signal[peaks]))]
+    max_frequency = freqs[max_frequency_index]
+
+    return np.abs(max_frequency)
+
+# Example usage
+fs = 256  # Sample rate (Hz)
+t = np.arange(0, 1, 1/fs)  # Time vector
+
+
+# Calculate the maximum signal frequency
+max_frequency = calculate_max_frequency_from_raw(mat_data01, fs)
+
+print("Maximum signal frequency:", max_frequency, "Hz")
+# FRF caculation
+
+
+import numpy as np
+from scipy import fft
+
+def calculate_FRF(input_signal, output_signal, fs):
+    # Perform FFT on input and output signals
+    input_fft = fft.fft(input_signal)
+    output_fft = fft.fft(output_signal)
+
+    # Compute the frequency axis
+    freq_axis = np.fft.fftfreq(len(input_signal), 1/fs)
+
+    # Compute FRF
+    FRF = output_fft / input_fft
+
+    # Compute phase angle of FRF in degrees
+    phase_angle_degrees = np.angle(FRF, deg=True)
+
+    return freq_axis, np.abs(FRF), phase_angle_degrees
+
+fs = 100  # Sample rate
+
+
+# Calculate FRF and phase angle
+freq_axis, magnitude, phase_angle_degrees = calculate_FRF(hammer, mat_data01, fs)
+magnitude = np.abs(magnitude)
+magnitude = 20 * np.log10(magnitude)
+
+ peak_indices, _ = find_peaks(magnitude)
+local_maxima_freqs = freq_axis[peak_indices]
+# Find resonance frequency where phase angle reaches 90 degrees
+
+
+freq_axis_90 =  np.argmin(np.abs(phase_angle_degrees - 90))
+
+Freq_axis_resonse=[]
+for i in range(len(freq_axis_90)):
+    for j in range(len(local_maxima_freqs)):
+        if freq_axis[i] == freq_axis_90[i] and freq_axis[j] == local_maxima_freqs[j]:
+            Freq_axis_resonse.append(freq_axis[j])
+
+# Plot the FRF magnitude and phase angle in degrees
+import matplotlib.pyplot as plt
+
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8))
+
+# Plot FRF magnitude
+ax1.plot(freq_axis, magnitude, color='tab:red')
+ax1.set_ylabel('Magnitude(N/m/S2)')
+
+# Plot phase angle in degrees
+ax2.plot(freq_axis, phase_angle_degrees, color='tab:blue')
+ax2.set_ylabel('Phase Angle (degrees)')
+ax2.set_xlabel('Frequency (Hz)')
+
+# Highlight resonance frequency on FRF plot
+# ax1.axvline(freq_axis, color='black', linestyle='--', label='Resonance Frequency')
+
+fig.suptitle('Frequency Response Function (FRF) and Phase Angle')
+plt.grid(True)
+plt.legend()
+plt.show()
